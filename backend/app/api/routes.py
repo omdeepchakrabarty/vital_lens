@@ -1,5 +1,6 @@
 import logging
 
+import numpy as np
 from fastapi import APIRouter, File, HTTPException, UploadFile
 import numpy as np
 
@@ -67,7 +68,7 @@ async def process_video(file: UploadFile = File(...)) -> dict:
         logger.debug("Traditional auxiliary streams computed: %s", traditional_debug)
 
         # Returned vitals are derived exclusively from deep model inference.
-        raw_outputs = model_service.predict_metrics_from_video(payload)
+        raw_outputs = model_service.predict_metrics_from_frames(frames_rgb)
         metrics = postprocess_metrics(raw_outputs)
 
         return {
