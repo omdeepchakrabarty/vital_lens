@@ -52,7 +52,7 @@ Place your trained checkpoint file at:
 models/BP4D_BigSmall_Multitask_Fold2.pth
 ```
 
-The backend resolves this via `model_relative_path` from `backend/app/core/config.py`.
+The backend resolves this from project root (`PROJECT_ROOT` env override, then sentinel discovery, then cwd contract) using `model_relative_path` in `backend/app/core/config.py`.
 
 ### Strict startup behavior (optional)
 
