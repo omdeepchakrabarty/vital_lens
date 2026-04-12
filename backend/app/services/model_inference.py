@@ -137,13 +137,23 @@ class ModelInferenceService:
 
         return face_crop, face_box
 
-    def preprocess_video(self, video_bytes: bytes) -> torch.Tensor:
-        frames = self._decode_video_to_frames(video_bytes)
+    def preprocess_frames(self, frames: np.ndarray | list[np.ndarray], *, input_is_rgb: bool = True) -> torch.Tensor:
+        if isinstance(frames, np.ndarray):
+            if frames.ndim != 4 or frames.shape[-1] != 3:
+                raise ValueError("Frames must have shape (T, H, W, 3).")
+            frame_sequence = [frame for frame in frames]
+        else:
+            frame_sequence = frames
+
+        if len(frame_sequence) < 16:
+            raise ValueError("Insufficient frames for robust inference. Please record at least 3 seconds.")
+
         processed_frames: list[np.ndarray] = []
 
         previous_box: tuple[int, int, int, int] | None = None
-        for frame in frames:
-            face_crop, previous_box = self._extract_face_roi(frame, previous_box)
+        for frame in frame_sequence:
+            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) if input_is_rgb else frame
+            face_crop, previous_box = self._extract_face_roi(frame_bgr, previous_box)
             face_rgb = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)
             face_rgb = cv2.resize(face_rgb, self.input_size, interpolation=cv2.INTER_LINEAR)
             face_norm = face_rgb.astype(np.float32) / 255.0
@@ -163,6 +173,10 @@ class ModelInferenceService:
         )
         return tensor
 
+    def preprocess_video(self, video_bytes: bytes) -> torch.Tensor:
+        frames = self._decode_video_to_frames(video_bytes)
+        return self.preprocess_frames(frames, input_is_rgb=False)
+
     def infer_raw_outputs(self, model_input: torch.Tensor) -> dict[str, list[float]]:
         self.model.eval()
         start = time.perf_counter()
@@ -175,6 +189,10 @@ class ModelInferenceService:
 
     def predict_metrics_from_video(self, video_bytes: bytes) -> dict[str, list[float]]:
         model_input = self.preprocess_video(video_bytes)
+        return self.infer_raw_outputs(model_input)
+
+    def predict_metrics_from_frames(self, frames_rgb: np.ndarray | list[np.ndarray]) -> dict[str, list[float]]:
+        model_input = self.preprocess_frames(frames_rgb, input_is_rgb=True)
         return self.infer_raw_outputs(model_input)
 
     @torch.inference_mode()
