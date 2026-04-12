@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.services.metrics_postprocess import sanitize_metrics
+from app.services.metrics_postprocess import postprocess_metrics
 from app.services.model_inference import ModelInferenceService
 from app.services.video_ingest import decode_video_to_frames_and_trace
 from app.traditional.chrom import CHROMProcessor
@@ -67,17 +67,13 @@ async def process_video(file: UploadFile = File(...)) -> dict:
         }
         logger.debug("Traditional auxiliary streams computed: %s", traditional_debug)
 
-        # Final response payload remains DL-only (from metrics_postprocess).
-        dl_metrics = model_service.predict_metrics_from_trace(rgb_trace)
-        metrics = sanitize_metrics(dl_metrics)
+        # Returned vitals are derived exclusively from deep model inference.
+        raw_outputs = model_service.predict_metrics_from_video(payload)
+        metrics = postprocess_metrics(raw_outputs)
 
         return {
-            "metrics": {
-                "bpm": metrics.bpm,
-                "hrv": metrics.hrv,
-                "sbp": metrics.sbp,
-                "dbp": metrics.dbp,
-            }
+            "metrics": metrics,
+            "diagnostics": {"traditional_pipeline": traditional_debug},
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
