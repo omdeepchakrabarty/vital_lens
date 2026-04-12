@@ -1,0 +1,52 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #090b13;
+  color: #f4f8ff;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+video {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #2a324d;
+  background: #000;
+}
+
+.controls {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #5f86ff;
+  color: #fff;
+}
+
+.card {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #2a324d;
+  border-radius: 12px;
+  background: #0f1322;
+}
+
+li {
+  margin: 0.45rem 0;
+}

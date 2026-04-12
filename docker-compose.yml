@@ -1,0 +1,9 @@
+version: "3.9"
+services:
+  vital-lens:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/workspace/vital_lens
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
