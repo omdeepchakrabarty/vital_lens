@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vital Lens rPPG</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Vital Lens rPPG</h1>
+      <p>Record a short face video and estimate vitals.</p>
+
+      <video id="preview" autoplay muted playsinline></video>
+
+      <div class="controls">
+        <button id="recordBtn">Start Recording</button>
+        <span id="status">Idle</span>
+      </div>
+
+      <section class="card">
+        <h2>Deep Model Metrics</h2>
+        <ul>
+          <li>BPM: <strong id="bpm">--</strong></li>
+          <li>HRV: <strong id="hrv">--</strong></li>
+          <li>SBP: <strong id="sbp">--</strong></li>
+          <li>DBP: <strong id="dbp">--</strong></li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
