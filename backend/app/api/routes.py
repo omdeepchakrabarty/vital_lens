@@ -1,5 +1,6 @@
 import logging
 
+import numpy as np
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.services.metrics_postprocess import postprocess_metrics
@@ -18,8 +19,6 @@ green_processor = GreenChannelProcessor()
 
 
 def _dominant_frequency_hz(signal: "np.ndarray", fps: float = 30.0) -> float:
-    import numpy as np
-
     if signal.size < 4:
         return 0.0
     centered = signal - np.mean(signal)
