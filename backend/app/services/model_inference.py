@@ -245,23 +245,35 @@ class ModelInferenceService:
         model_input = self.preprocess_video(video_bytes)
         return self.infer_raw_outputs(model_input)
 
-    def predict_metrics_from_frames(self, frames_rgb: np.ndarray | list[np.ndarray]) -> dict[str, list[float]]:
-        model_input = self.preprocess_frames(frames_rgb, input_is_rgb=True)
-        return self.infer_raw_outputs(model_input)
+    def preprocess_trace(self, rgb_trace: np.ndarray) -> torch.Tensor:
+        if rgb_trace.ndim != 2 or rgb_trace.shape[1] != 3:
+            raise ValueError("Expected rgb_trace shape (T, 3).")
+        if rgb_trace.shape[0] < 16:
+            raise ValueError("Insufficient trace length for robust inference. Need at least 16 frames.")
+
+        trace = rgb_trace.astype(np.float32)
+        if trace.max() > 1.0 or trace.min() < -1.0:
+            trace = trace / 255.0
+        trace = (trace - 0.5) / 0.5
+
+        trace = np.transpose(trace, (1, 0))  # (C, T)
+        trace = np.expand_dims(trace, axis=(0, 3, 4))  # (B, C, T, 1, 1)
+        trace = np.broadcast_to(
+            trace,
+            (1, 3, trace.shape[2], self.input_size[1], self.input_size[0]),
+        ).copy()
+
+        tensor = torch.from_numpy(trace).to(self.device, dtype=torch.float32)
+        logger.info(
+            "Preprocessed trace tensor shape=%s on device=%s",
+            tuple(tensor.shape),
+            self.device,
+        )
+        return tensor
 
     @torch.inference_mode()
     def predict_metrics_from_trace(self, rgb_trace: np.ndarray) -> dict[str, list[float]]:
         # Backward-compatible path for existing callers/tests using mean RGB trace.
-        averaged = np.mean(rgb_trace, axis=0).astype(np.float32)
-        repeated = np.tile(averaged[None, None, :], (72, 72, 1))
-        normalized = (repeated - 0.5) / 0.5
-
-        big = np.transpose(normalized, (2, 0, 1))[None, ...]
-        small_hw = cv2.resize(normalized, self.small_input_size, interpolation=cv2.INTER_AREA)
-        small = np.transpose(small_hw, (2, 0, 1))[None, ...]
-
-        model_input = (
-            torch.from_numpy(big).to(self.device, dtype=torch.float32),
-            torch.from_numpy(small).to(self.device, dtype=torch.float32),
-        )
+        # Expand trace into model-compatible spatiotemporal tensor semantics.
+        model_input = self.preprocess_trace(rgb_trace)
         return self.infer_raw_outputs(model_input)
