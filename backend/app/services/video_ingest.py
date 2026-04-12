@@ -1,4 +1,5 @@
 from io import BytesIO
+import tempfile
 
 import cv2
 import numpy as np
@@ -15,24 +16,28 @@ def decode_video_to_frames_and_trace(video_bytes: bytes, max_frames: int = 256) 
     """
     raw = np.frombuffer(video_bytes, dtype=np.uint8)
     cap = cv2.VideoCapture()
-    if not cap.open(BytesIO(raw).read(), cv2.CAP_FFMPEG):
-        temp_path = "/tmp/upload.webm"
-        with open(temp_path, "wb") as file:
-            file.write(video_bytes)
-        cap = cv2.VideoCapture(temp_path)
-
-    if not cap.isOpened():
-        raise ValueError("Could not decode video stream.")
-
     frames_rgb = []
-    while len(frames_rgb) < max_frames:
-        ok, frame = cap.read()
-        if not ok:
-            break
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frames_rgb.append(rgb)
+    temp_video = None
+    try:
+        if not cap.open(BytesIO(raw).read(), cv2.CAP_FFMPEG):
+            temp_video = tempfile.NamedTemporaryFile(suffix=".webm", delete=True)
+            temp_video.write(video_bytes)
+            temp_video.flush()
+            cap = cv2.VideoCapture(temp_video.name)
 
-    cap.release()
+        if not cap.isOpened():
+            raise ValueError("Could not decode video stream.")
+
+        while len(frames_rgb) < max_frames:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frames_rgb.append(rgb)
+    finally:
+        cap.release()
+        if temp_video is not None:
+            temp_video.close()
 
     if len(frames_rgb) < 16:
         raise ValueError("Insufficient frames for robust inference. Please record at least 3 seconds.")
