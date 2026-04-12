@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 
-    model_relative_path: str = "app/models/BP4D_BigSmall_Multitask_Fold2.pth"
+    model_relative_path: str = "../models/BP4D_BigSmall_Multitask_Fold2.pth"
     model_device: str = "cpu"
     model_strict_loading: bool = False
 
