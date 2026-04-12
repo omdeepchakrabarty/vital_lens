@@ -1,0 +1,7 @@
+version: "3.9"
+services:
+  vital-lens:
+    volumes:
+      # Development override only: bind mount source for live editing.
+      - .:/workspace/vital_lens
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
