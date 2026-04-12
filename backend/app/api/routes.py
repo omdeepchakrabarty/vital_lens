@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 from fastapi import APIRouter, File, HTTPException, UploadFile
+import numpy as np
 
 from app.services.metrics_postprocess import postprocess_metrics
 from app.services.model_inference import ModelInferenceService
@@ -18,7 +19,7 @@ chrom_processor = CHROMProcessor()
 green_processor = GreenChannelProcessor()
 
 
-def _dominant_frequency_hz(signal: "np.ndarray", fps: float = 30.0) -> float:
+def _dominant_frequency_hz(signal: np.ndarray, fps: float = 30.0) -> float:
     if signal.size < 4:
         return 0.0
     centered = signal - np.mean(signal)
