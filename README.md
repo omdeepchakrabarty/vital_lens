@@ -44,6 +44,12 @@ vital_lens/
 
 ---
 
+## BP4D BigSmall Checkpoint Compatibility
+
+The backend model mirrors the BP4D BigSmall multitask checkpoint structure (`big_conv*`, `small_conv*`, `au_fc*`, `bvp_fc*`, `resp_fc*`) and loads with strict key matching by default.
+
+This prevents silent partial loads and avoids misleading inference from incompatible checkpoints.
+
 ## Model Placement
 
 Place your trained checkpoint file at:
@@ -56,8 +62,8 @@ The backend resolves this via `model_relative_path` from `backend/app/core/confi
 
 ### Strict startup behavior (optional)
 
-- Default: `MODEL_STRICT_LOADING=false` (service starts even if weights are missing).
-- Strict mode: set `MODEL_STRICT_LOADING=true` to fail fast when checkpoint is absent.
+- Default: `MODEL_STRICT_LOADING=true` (service fails fast when checkpoint is absent or incompatible).
+- Non-strict startup override: set `MODEL_STRICT_LOADING=false` to allow random initialization for debugging only.
 
 Example:
 

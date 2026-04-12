@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     model_relative_path: str = "../models/BP4D_BigSmall_Multitask_Fold2.pth"
     model_device: str = "cpu"
-    model_strict_loading: bool = False
+    model_strict_loading: bool = True
 
     frontend_dir: str = "../frontend"
 
