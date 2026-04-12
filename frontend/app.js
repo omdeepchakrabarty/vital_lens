@@ -44,8 +44,19 @@ async function uploadRecording(blob) {
 }
 
 function renderMetrics(metrics) {
-  ["bpm", "hrv", "sbp", "dbp"].forEach((k) => {
-    metricEls[k].textContent = Number(metrics[k]).toFixed(1);
+  const keyMap = {
+    bpm: "bpm",
+    hrv: "hrv",
+    sbp: "systolic_bp",
+    dbp: "diastolic_bp",
+  };
+
+  ["bpm", "hrv", "sbp", "dbp"].forEach((uiKey) => {
+    const apiKey = keyMap[uiKey];
+    const value = Number(metrics[apiKey]);
+    metricEls[uiKey].textContent = Number.isFinite(value)
+      ? value.toFixed(1)
+      : "--";
   });
 }
 
