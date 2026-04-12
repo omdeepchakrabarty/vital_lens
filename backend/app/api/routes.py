@@ -1,14 +1,34 @@
+import logging
+
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.services.metrics_postprocess import sanitize_metrics
 from app.services.model_inference import ModelInferenceService
-from app.services.video_ingest import decode_video_to_rgb_trace
-from app.traditional.chrom import extract_chrom_signal
-from app.traditional.green import extract_green_signal
-from app.traditional.pos import extract_pos_signal
+from app.services.video_ingest import decode_video_to_frames_and_trace
+from app.traditional.chrom import CHROMProcessor
+from app.traditional.green import GreenChannelProcessor
+from app.traditional.pos import POSProcessor
 
 router = APIRouter()
 model_service = ModelInferenceService()
+logger = logging.getLogger(__name__)
+pos_processor = POSProcessor()
+chrom_processor = CHROMProcessor()
+green_processor = GreenChannelProcessor()
+
+
+def _dominant_frequency_hz(signal: "np.ndarray", fps: float = 30.0) -> float:
+    import numpy as np
+
+    if signal.size < 4:
+        return 0.0
+    centered = signal - np.mean(signal)
+    spectrum = np.abs(np.fft.rfft(centered))
+    freqs = np.fft.rfftfreq(centered.size, d=1.0 / fps)
+    if spectrum.size <= 1:
+        return 0.0
+    peak_idx = int(np.argmax(spectrum[1:]) + 1)
+    return float(freqs[peak_idx])
 
 
 @router.get("/health")
@@ -24,16 +44,30 @@ async def process_video(file: UploadFile = File(...)) -> dict:
     payload = await file.read()
 
     try:
-        rgb_trace = decode_video_to_rgb_trace(payload)
+        # Decode once, then run both auxiliary traditional streams and DL inference.
+        frames_rgb, rgb_trace = decode_video_to_frames_and_trace(payload)
 
-        # Traditional pipelines are executed for observability/troubleshooting.
+        # These streams are intentionally kept visible as ensemble-like validation
+        # paths for diagnostics only; they do not affect returned API vitals.
+        pos_signal = pos_processor.process(frames_rgb)
+        chrom_signal = chrom_processor.process(frames_rgb)
+        green_signal = green_processor.process(frames_rgb)
+
         traditional_debug = {
-            "green_energy": float((extract_green_signal(rgb_trace) ** 2).mean()),
-            "chrom_energy": float((extract_chrom_signal(rgb_trace) ** 2).mean()),
-            "pos_energy": float((extract_pos_signal(rgb_trace) ** 2).mean()),
+            "signal_lengths": {
+                "pos": int(pos_signal.shape[0]),
+                "chrom": int(chrom_signal.shape[0]),
+                "green": int(green_signal.shape[0]),
+            },
+            "spectral_peaks_hz": {
+                "pos": _dominant_frequency_hz(pos_signal),
+                "chrom": _dominant_frequency_hz(chrom_signal),
+                "green": _dominant_frequency_hz(green_signal),
+            },
         }
+        logger.debug("Traditional auxiliary streams computed: %s", traditional_debug)
 
-        # Returned vitals are derived exclusively from deep model inference.
+        # Final response payload remains DL-only (from metrics_postprocess).
         dl_metrics = model_service.predict_metrics_from_trace(rgb_trace)
         metrics = sanitize_metrics(dl_metrics)
 
@@ -43,8 +77,7 @@ async def process_video(file: UploadFile = File(...)) -> dict:
                 "hrv": metrics.hrv,
                 "sbp": metrics.sbp,
                 "dbp": metrics.dbp,
-            },
-            "diagnostics": {"traditional_pipeline": traditional_debug},
+            }
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
